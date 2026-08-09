@@ -26,10 +26,24 @@ jobs:
           flutter create teacher_app --org com.teacherassistant.app --project-name teacher_assistant
           cd teacher_app
           flutter pub add webview_flutter
-          
-          # تعديل إصدار أندرويد ليتوافق مع WebView
-          sed -i 's/minSdkVersion .*/minSdkVersion 21/g' android/app/build.gradle
-          sed -i 's/minSdk .*/minSdk = 21/g' android/app/build.gradle
+
+          # تعديل إصدار أندرويد ليتوافق مع WebView تلقائياً
+          python3 -c "
+          import os, re
+          files = ['android/app/build.gradle', 'android/app/build.gradle.kts']
+          for fpath in files:
+              if os.path.exists(fpath):
+                  with open(fpath, 'r') as f:
+                      c = f.read()
+                  c = re.sub(r'minSdkVersion\s+.*', 'minSdkVersion 21', c)
+                  c = re.sub(r'minSdk\s*=.*', 'minSdk = 21', c)
+                  c = re.sub(r'flutter\.minSdkVersion', '21', c)
+                  with open(fpath, 'w') as f:
+                      f.write(c)
+
+          with open('android/local.properties', 'a') as f:
+              f.write('\nflutter.minSdkVersion=21\n')
+          "
 
           # كتابة كود تطبيق Jotform
           python3 -c "
