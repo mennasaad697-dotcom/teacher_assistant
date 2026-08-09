@@ -9,6 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -20,15 +22,13 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Build Clean APK in Isolated Directory
+      - name: Add WebView Dependency and Build
         run: |
-          cd /tmp
-          flutter create teacher_app --org com.teacherassistant.app --project-name teacher_assistant
-          cd teacher_app
+          flutter pub add webview_flutter
           flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: TeacherAssistant-APK
-          path: /tmp/teacher_app/build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
