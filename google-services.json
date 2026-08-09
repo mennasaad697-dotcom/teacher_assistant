@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1030371320299",
+    "project_id": "teacher-assistant-764e4",
+    "storage_bucket": "teacher-assistant-764e4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1030371320299:android:4fb15b509b80b2f3f6b9ae",
+        "android_client_info": {
+          "package_name": "com.teacherassistant.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC6RmCbEeHcJusQO6SQtPA025SEHy2oBMo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
