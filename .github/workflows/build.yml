@@ -20,18 +20,17 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.x'
           channel: 'stable'
 
-      - name: Create Android Structure and Build APK
+      - name: Build Clean App
         run: |
-          flutter create . --org com.teacherassistant.app --project-name teacher_assistant
-          flutter pub get
+          flutter create my_app --org com.teacherassistant.app
+          cd my_app
           flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: TeacherAssistant-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: my_app/build/app/outputs/flutter-apk/app-release.apk
           
