@@ -15,20 +15,29 @@ class TeacherAssistantApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorSchemeSeed: Colors.indigo,
+        brightness: Brightness.light,
       ),
       home: const DashboardScreen(),
     );
   }
 }
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  int _attendanceCount = 0;
+  double _totalPayments = 0.0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تطبيق مساعد المعلم'),
+        title: const Text('مساعد المعلم - Teacher Assistant'),
         centerTitle: true,
         backgroundColor: Colors.indigo,
         foregroundColor: Colors.white,
@@ -38,7 +47,7 @@ class DashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // بطاقة الترحيب
+            // كارت الترحيب
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -51,7 +60,7 @@ class DashboardScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'أهلاً بك 👋',
+                    'أهلاً بك يا أستاذ 👋',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -60,7 +69,7 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'مرحباً بك في لوحة تحكم مساعد المعلم والطلاب',
+                    'لوحة تحكم إدارة الطلاب والحضور والتحصيلات',
                     style: TextStyle(fontSize: 14, color: Colors.black87),
                   ),
                 ],
@@ -68,9 +77,9 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // إحصائيات سريعة
+            // قسم الإحصائيات
             const Text(
-              'الإحصائيات اليومية',
+              'ملخص اليوم',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
@@ -79,14 +88,18 @@ class DashboardScreen extends StatelessWidget {
                 Expanded(
                   child: Card(
                     color: Colors.green.shade50,
-                    child: const Padding(
-                      padding: EdgeInsets.all(16.0),
+                    elevation: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
                       child: Column(
                         children: [
-                          Icon(Icons.qr_code_scanner, color: Colors.green, size: 30),
-                          SizedBox(height: 8),
-                          Text('الحضور اليوم'),
-                          Text('0', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          const Icon(Icons.qr_code_scanner, color: Colors.green, size: 32),
+                          const SizedBox(height: 8),
+                          const Text('حضور اليوم'),
+                          Text(
+                            '$_attendanceCount طالباً',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                          ),
                         ],
                       ),
                     ),
@@ -96,14 +109,18 @@ class DashboardScreen extends StatelessWidget {
                 Expanded(
                   child: Card(
                     color: Colors.blue.shade50,
-                    child: const Padding(
-                      padding: EdgeInsets.all(16.0),
+                    elevation: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
                       child: Column(
                         children: [
-                          Icon(Icons.account_balance_wallet, color: Colors.blue, size: 30),
-                          SizedBox(height: 8),
-                          Text('التحصيلات'),
-                          Text('0 ج.م', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                          const Icon(Icons.account_balance_wallet, color: Colors.blue, size: 32),
+                          const SizedBox(height: 8),
+                          const Text('التحصيلات'),
+                          Text(
+                            '$_totalPayments ج.م',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+                          ),
                         ],
                       ),
                     ),
@@ -113,34 +130,50 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // قائمة الخيارات
+            // الإجراءات والخدمات
             const Text(
-              'الخدمات الأساسية',
+              'الخدمات السريعة',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Card(
+              elevation: 2,
               child: Column(
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.people, color: Colors.indigo),
-                    title: const Text('إدارة قائمة الطلاب'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {},
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.indigo,
+                      child: Icon(Icons.person_add, color: Colors.white, size: 20),
+                    ),
+                    title: const Text('تسجيل حضور طالب جديدة'),
+                    subtitle: const Text('إضافة طالب لقائمة الحضور سريعا'),
+                    trailing: const Icon(Icons.add_circle, color: Colors.indigo),
+                    onTap: () {
+                      setState(() {
+                        _attendanceCount++;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('تم تسجيل حضور طالب جديد!')),
+                      );
+                    },
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.qr_code_scanner, color: Colors.green),
-                    title: const Text('مسح رمز الـ QR وتلقي الحضور'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {},
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.payment, color: Colors.orange),
-                    title: const Text('تسجيل الحسابات والمدفوعات'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {},
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.green,
+                      child: Icon(Icons.attach_money, color: Colors.white, size: 20),
+                    ),
+                    title: const Text('تسجيل دفعة جديدة'),
+                    subtitle: const Text('تحصيل المصروفات والاشتراكات'),
+                    trailing: const Icon(Icons.add_card, color: Colors.green),
+                    onTap: () {
+                      setState(() {
+                        _totalPayments += 50;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('تم إضافة 50 ج.م للتحصيلات!')),
+                      );
+                    },
                   ),
                 ],
               ),
