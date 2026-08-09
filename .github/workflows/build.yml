@@ -1,4 +1,4 @@
-name: Build Native App for Google Play & Android
+name: Build Native App
 
 on:
   push:
@@ -22,116 +22,11 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Create Clean Project
+      - name: Create and Build App
         run: |
           cd /tmp
           flutter create teacher_app --org com.teacherassistant.app --project-name teacher_assistant
           cd teacher_app
-          flutter pub add firebase_core firebase_auth cloud_firestore google_sign_in
-
-      - name: Add Permissions and MinSdk
-        run: |
-          cd /tmp/teacher_app
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
-          find android -name "build.gradle*" -exec sed -i 's/minSdkVersion.*/minSdkVersion 21/g' {} +
-          find android -name "build.gradle*" -exec sed -i 's/minSdk.*/minSdk = 21/g' {} +
-
-      - name: Setup Native App Code
-        run: |
-          cd /tmp/teacher_app
-          cat << 'EOF' > lib/main.dart
-import 'package:flutter/material.dart';
-
-void main() {
-  runApp(const TeacherAssistantApp());
-}
-
-class TeacherAssistantApp extends StatelessWidget {
-  const TeacherAssistantApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'تطبيق المعلم المساعد',
-      theme: ThemeData(
-        primarySwatch: Colors.indigo,
-        useMaterial3: true,
-      ),
-      home: const Directionality(
-        textDirection: TextDirection.rtl,
-        child: HomeScreen(),
-      ),
-    );
-  }
-}
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final _nameController = TextEditingController();
-  final _subjectController = TextEditingController();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('المعلم المساعد - تطبيق كامل'),
-        backgroundColor: Colors.indigo,
-        foregroundColor: Colors.white,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            const Icon(Icons.school, size: 80, color: Colors.indigo),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'اسم الطالب',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 15),
-            TextField(
-              controller: _subjectController,
-              decoration: const InputDecoration(
-                labelText: 'المادة الدراسية',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم الحفظ بنجاح!')),
-                );
-              },
-              icon: const Icon(Icons.save),
-              label: const Text('حفظ البيانات'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
-                foregroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(50),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-EOF
-
-      - name: Build APK and AAB
-        run: |
-          cd /tmp/teacher_app
           flutter build apk --release
           flutter build appbundle --release
 
