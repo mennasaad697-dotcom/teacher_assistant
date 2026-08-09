@@ -20,62 +20,69 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Create and Build Complete App
+      - name: Build Teacher Assistant APK
         run: |
           cd /tmp
           flutter create teacher_app --org com.teacherassistant.app --project-name teacher_assistant
           cd teacher_app
           flutter pub add webview_flutter
           
-          cat << 'EOF' > lib/main.dart
-import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+          # تعديل إصدار أندرويد ليتوافق مع WebView
+          sed -i 's/minSdkVersion .*/minSdkVersion 21/g' android/app/build.gradle
+          sed -i 's/minSdk .*/minSdk = 21/g' android/app/build.gradle
 
-void main() {
-  runApp(const MyApp());
-}
+          # كتابة كود تطبيق Jotform
+          python3 -c "
+          code = '''import 'package:flutter/material.dart';
+          import 'package:webview_flutter/webview_flutter.dart';
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+          void main() {
+            runApp(const MyApp());
+          }
 
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Teacher Assistant',
-      home: WebViewScreen(),
-    );
-  }
-}
+          class MyApp extends StatelessWidget {
+            const MyApp({super.key});
 
-class WebViewScreen extends StatefulWidget {
-  const WebViewScreen({super.key});
+            @override
+            Widget build(BuildContext context) {
+              return const MaterialApp(
+                debugShowCheckedModeBanner: false,
+                title: 'Teacher Assistant',
+                home: WebViewScreen(),
+              );
+            }
+          }
 
-  @override
-  State<WebViewScreen> createState() => _WebViewScreenState();
-}
+          class WebViewScreen extends StatefulWidget {
+            const WebViewScreen({super.key});
 
-class _WebViewScreenState extends State<WebViewScreen> {
-  late final WebViewController controller;
+            @override
+            State<WebViewScreen> createState() => _WebViewScreenState();
+          }
 
-  @override
-  void initState() {
-    super.initState();
-    controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..loadRequest(Uri.parse('https://form.jotform.com/241834927233056'));
-  }
+          class _WebViewScreenState extends State<WebViewScreen> {
+            late final WebViewController controller;
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: WebViewWidget(controller: controller),
-      ),
-    );
-  }
-}
-EOF
+            @override
+            void initState() {
+              super.initState();
+              controller = WebViewController()
+                ..setJavaScriptMode(JavaScriptMode.unrestricted)
+                ..loadRequest(Uri.parse('https://form.jotform.com/241834927233056'));
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                body: SafeArea(
+                  child: WebViewWidget(controller: controller),
+                ),
+              );
+            }
+          }'''
+          with open('lib/main.dart', 'w') as f:
+              f.write(code.strip())
+          "
 
           flutter build apk --release
 
@@ -84,78 +91,3 @@ EOF
         with:
           name: TeacherAssistant-APK
           path: /tmp/teacher_app/build/app/outputs/flutter-apk/app-release.apk
-dependencies:
-  flutter:
-    sdk: flutter
-  cupertino_icons: ^1.0.6
-  webview_flutter: ^4.7.0
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-
-flutter:
-  uses-material-design: true
-EOF
-
-          cat << 'EOF' > lib/main.dart
-import 'package0flutter/material.dart';
-import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Teacher Assistant',
-      home: WebViewScreen(),
-    );
-  }
-}
-
-class WebViewScreen extends StatefulWidget {
-  const WebViewScreen({super.key});
-
-  @override
-  State<WebViewScreen> createState() => _WebViewScreenState();
-}
-
-class _WebViewScreenState extends State<WebViewScreen> {
-  late final WebViewController controller;
-
-  @override
-  void initState() {
-    super.initState();
-    controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..loadRequest(Uri.parse('https://form.jotform.com/241834927233056'));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: WebViewWidget(controller: controller),
-      ),
-    );
-  }
-}
-EOF
-
-      - name: Build APK
-        run: |
-          flutter pub get
-          flutter build apk --release
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: TeacherAssistant-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
