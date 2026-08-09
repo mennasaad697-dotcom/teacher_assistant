@@ -9,6 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -20,14 +22,17 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Build Teacher Assistant APK
+      - name: Build App with Internet Permission
         run: |
           cd /tmp
           flutter create teacher_app --org com.teacherassistant.app --project-name teacher_assistant
           cd teacher_app
           flutter pub add webview_flutter
 
-          # تعديل إصدار أندرويد ليتوافق مع WebView تلقائياً
+          # 1. إضافة إذن الإنترنت للأندرويد
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
+
+          # 2. ضبط minSdkVersion ليتوافق مع WebView
           python3 -c "
           import os, re
           files = ['android/app/build.gradle', 'android/app/build.gradle.kts']
@@ -40,12 +45,9 @@ jobs:
                   c = re.sub(r'flutter\.minSdkVersion', '21', c)
                   with open(fpath, 'w') as f:
                       f.write(c)
-
-          with open('android/local.properties', 'a') as f:
-              f.write('\nflutter.minSdkVersion=21\n')
           "
 
-          # كتابة كود تطبيق Jotform
+          # 3. كتابة كود التطبيق
           python3 -c "
           code = '''import 'package:flutter/material.dart';
           import 'package:webview_flutter/webview_flutter.dart';
@@ -105,3 +107,4 @@ jobs:
         with:
           name: TeacherAssistant-APK
           path: /tmp/teacher_app/build/app/outputs/flutter-apk/app-release.apk
+          
