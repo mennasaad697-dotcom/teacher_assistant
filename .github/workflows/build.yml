@@ -37,19 +37,43 @@ jobs:
             cp "$GITHUB_WORKSPACE/google-services.json" android/app/
           fi
 
-          # ضبط minSdkVersion ليتوافق مع أندرويد
+          # ضبط Gradle تلقائياً لدعم Google Services و minSdkVersion
           python3 -c "
           import os, re
-          files = ['android/app/build.gradle', 'android/app/build.gradle.kts']
-          for fpath in files:
-              if os.path.exists(fpath):
-                  with open(fpath, 'r') as f:
-                      c = f.read()
-                  c = re.sub(r'minSdkVersion\s+.*', 'minSdkVersion 21', c)
-                  c = re.sub(r'minSdk\s*=.*', 'minSdk = 21', c)
-                  c = re.sub(r'flutter\.minSdkVersion', '21', c)
-                  with open(fpath, 'w') as f:
+
+          # 1. ضبط build.gradle الرئيسي أو settings.gradle
+          b_file = 'android/build.gradle'
+          if os.path.exists(b_file):
+              with open(b_file, 'r') as f:
+                  c = f.read()
+              if 'com.google.gms:google-services' not in c:
+                  c = c.replace('dependencies {', 'dependencies {\n        classpath \"com.google.gms:google-services:4.4.1\"')
+                  with open(b_file, 'w') as f:
                       f.write(c)
+
+          # 2. ضبط app/build.gradle وإلغاء حظر minSdkVersion
+          app_b_file = 'android/app/build.gradle'
+          if os.path.exists(app_b_file):
+              with open(app_b_file, 'r') as f:
+                  c = f.read()
+              if 'com.google.gms.google-services' not in c:
+                  c += '\napply plugin: \"com.google.gms.google-services\"\n'
+              c = re.sub(r'minSdkVersion\s+.*', 'minSdkVersion 21', c)
+              c = re.sub(r'flutter\.minSdkVersion', '21', c)
+              with open(app_b_file, 'w') as f:
+                  f.write(c)
+
+          # 3. دعم Kotlin DSL في حال وجود build.gradle.kts
+          app_kts = 'android/app/build.gradle.kts'
+          if os.path.exists(app_kts):
+              with open(app_kts, 'r') as f:
+                  c = f.read()
+              if 'com.google.gms.google-services' not in c:
+                  c = c.replace('plugins {', 'plugins {\n    id(\"com.google.gms.google-services\")')
+              c = re.sub(r'minSdk\s*=.*', 'minSdk = 21', c)
+              c = re.sub(r'flutter\.minSdkVersion', '21', c)
+              with open(app_kts, 'w') as f:
+                  f.write(c)
           "
 
           # كتابة كود تطبيق Teacher Assistant الناتيف الكامل
@@ -138,7 +162,7 @@ class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('تسجيل الدخول تجريبي / خطأ: $e')),
+          SnackBar(content: Text('تسجيل الدخول: $e')),
         );
       }
     } finally {
