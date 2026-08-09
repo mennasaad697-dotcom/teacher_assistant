@@ -23,14 +23,15 @@ on:
                                                                                                   flutter-version: '3.22.x'
                                                                                                             channel: 'stable'
 
-                                                                                                                  - name: Build APK
+                                                                                                                  - name: Create Android Structure and Build APK
                                                                                                                           run: |
-                                                                                                                                    mkdir -p lib
-                                                                                                                                              flutter build apk --release --no-pub
+                                                                                                                                    flutter create . --org com.teacherassistant.app --project-name teacher_assistant
+                                                                                                                                              flutter pub get
+                                                                                                                                                        flutter build apk --release
 
-                                                                                                                                                    - name: Upload APK
-                                                                                                                                                            uses: actions/upload-artifact@v4
-                                                                                                                                                                    with:
-                                                                                                                                                                              name: TeacherAssistant-APK
-                                                                                                                                                                                        path: build/app/outputs/flutter-apk/app-release.apk
-                                                                                                                                                                                        
+                                                                                                                                                              - name: Upload APK
+                                                                                                                                                                      uses: actions/upload-artifact@v4
+                                                                                                                                                                              with:
+                                                                                                                                                                                        name: TeacherAssistant-APK
+                                                                                                                                                                                                  path: build/app/outputs/flutter-apk/app-release.apk
+                                                                                                                                                                                                  
