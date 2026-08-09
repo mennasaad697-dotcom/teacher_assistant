@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Native App for Google Play & Android
 
 on:
   push:
@@ -22,17 +22,22 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Build App with Internet Permission
+      - name: Build Full Native App with Google Auth
         run: |
           cd /tmp
           flutter create teacher_app --org com.teacherassistant.app --project-name teacher_assistant
           cd teacher_app
-          flutter pub add webview_flutter
 
-          # 1. إضافة إذن الإنترنت للأندرويد
+          # إضافة مكتبات تسجيل الدخول والفيبربيس
+          flutter pub add firebase_core firebase_auth cloud_firestore google_sign_in
           sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
 
-          # 2. ضبط minSdkVersion ليتوافق مع WebView
+          # نقل ملف google-services.json للربط
+          if [ -f "$GITHUB_WORKSPACE/google-services.json" ]; then
+            cp "$GITHUB_WORKSPACE/google-services.json" android/app/
+          fi
+
+          # ضبط minSdkVersion ليتوافق مع أندرويد
           python3 -c "
           import os, re
           files = ['android/app/build.gradle', 'android/app/build.gradle.kts']
@@ -47,64 +52,255 @@ jobs:
                       f.write(c)
           "
 
-          # 3. كتابة كود التطبيق
-          python3 -c "
-          code = '''import 'package:flutter/material.dart';
-          import 'package:webview_flutter/webview_flutter.dart';
+          # كتابة كود تطبيق Teacher Assistant الناتيف الكامل
+          cat << 'EOF' > lib/main.dart
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-          void main() {
-            runApp(const MyApp());
-          }
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint("Firebase Error: $e");
+  }
+  runApp(const TeacherAssistantApp());
+}
 
-          class MyApp extends StatelessWidget {
-            const MyApp({super.key});
+class TeacherAssistantApp extends StatelessWidget {
+  const TeacherAssistantApp({super.key});
 
-            @override
-            Widget build(BuildContext context) {
-              return const MaterialApp(
-                debugShowCheckedModeBanner: false,
-                title: 'Teacher Assistant',
-                home: WebViewScreen(),
-              );
-            }
-          }
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'تطبيق المعلم المساعد',
+      theme: ThemeData(
+        primarySwatch: Colors.indigo,
+        useMaterial3: true,
+      ),
+      home: const AuthWrapper(),
+    );
+  }
+}
 
-          class WebViewScreen extends StatefulWidget {
-            const WebViewScreen({super.key});
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
 
-            @override
-            State<WebViewScreen> createState() => _WebViewScreenState();
-          }
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasData) {
+          return const Directionality(
+            textDirection: TextDirection.rtl,
+            child: MainDashboardScreen(),
+          );
+        }
+        return const Directionality(
+          textDirection: TextDirection.rtl,
+          child: GoogleLoginScreen(),
+        );
+      },
+    );
+  }
+}
 
-          class _WebViewScreenState extends State<WebViewScreen> {
-            late final WebViewController controller;
+class GoogleLoginScreen extends StatefulWidget {
+  const GoogleLoginScreen({super.key});
 
-            @override
-            void initState() {
-              super.initState();
-              controller = WebViewController()
-                ..setJavaScriptMode(JavaScriptMode.unrestricted)
-                ..loadRequest(Uri.parse('https://form.jotform.com/241834927233056'));
-            }
+  @override
+  State<GoogleLoginScreen> createState() => _GoogleLoginScreenState();
+}
 
-            @override
-            Widget build(BuildContext context) {
-              return Scaffold(
-                body: SafeArea(
-                  child: WebViewWidget(controller: controller),
-                ),
-              );
-            }
-          }'''
-          with open('lib/main.dart', 'w') as f:
-              f.write(code.strip())
-          "
+class _GoogleLoginScreenState extends State<GoogleLoginScreen> {
+  bool _isLoading = false;
 
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser != null) {
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        await FirebaseAuth.instance.signInWithCredential(credential);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تسجيل الدخول تجريبي / خطأ: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircleAvatar(
+                radius: 50,
+                backgroundColor: Colors.indigo,
+                child: Icon(Icons.school, size: 60, color: Colors.white),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'تطبيق المعلم المساعد',
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.indigo),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'سجل دخولك بحساب جوجل لحفظ البيانات سحابياً',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+              const SizedBox(height: 40),
+              _isLoading
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton.icon(
+                      onPressed: _signInWithGoogle,
+                      icon: const Icon(Icons.login, color: Colors.white),
+                      label: const Text('تسجيل الدخول بحساب Google', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class MainDashboardScreen extends StatefulWidget {
+  const MainDashboardScreen({super.key});
+
+  @override
+  State<MainDashboardScreen> createState() => _MainDashboardScreenState();
+}
+
+class _MainDashboardScreenState extends State<MainDashboardScreen> {
+  final _nameController = TextEditingController();
+  final _subjectController = TextEditingController();
+  final _gradeController = TextEditingController();
+
+  Future<void> _saveData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (_nameController.text.isEmpty) return;
+
+    await FirebaseFirestore.instance.collection('teacher_records').add({
+      'teacher_email': user?.email ?? 'مجهول',
+      'student_name': _nameController.text,
+      'subject': _subjectController.text,
+      'grade': _gradeController.text,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    _nameController.clear();
+    _subjectController.clear();
+    _gradeController.clear();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ تم التخزين بنجاح في قاعدة البيانات!'), backgroundColor: Colors.green),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('لوحة التحكم - المعلم المساعد'),
+        backgroundColor: Colors.indigo,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => FirebaseAuth.instance.signOut(),
+          )
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Card(
+              color: Colors.indigo.shade50,
+              child: ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.person)),
+                title: Text(user?.displayName ?? 'المعلم الفاضل'),
+                subtitle: Text(user?.email ?? ''),
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'اسم الطالب', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _subjectController,
+              decoration: const InputDecoration(labelText: 'المادة الدراسية', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _gradeController,
+              decoration: const InputDecoration(labelText: 'الدرجة والتقييم', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _saveData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(50),
+              ),
+              child: const Text('حفظ البيانات في السحابة', style: TextStyle(fontSize: 18)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+EOF
+
+          # بناء ملف APK للتجربة + ملف AAB للرفع على Google Play
           flutter build apk --release
+          flutter build appbundle --release
 
-      - name: Upload APK
+      - name: Upload APK for Testing
         uses: actions/upload-artifact@v4
         with:
           name: TeacherAssistant-APK
           path: /tmp/teacher_app/build/app/outputs/flutter-apk/app-release.apk
-          
+
+      - name: Upload AAB for Google Play Store
+        uses: actions/upload-artifact@v4
+        with:
+          name: TeacherAssistant-GooglePlay-AAB
+          path: /tmp/teacher_app/build/app/outputs/bundle/release/app-release.aab
